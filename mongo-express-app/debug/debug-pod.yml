@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug
+  namespace: default
+  labels:
+    app: weblog
+    env: study
+spec:
+  containers:
+  - name: debug
+    image: debug
+    imagePullPolicy: Never
+    command: #すぐ閉じられないように
+    - "sh"
+    - "-c"
+    args:
+    - |
+      while true
+      do
+        sleep 5
+      done

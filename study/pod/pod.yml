@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test
+  namespace: default
+  labels:
+    env: study
+spec:
+  containers:
+    - name: hello-world #podの中に複数のcontainerを起動することができるので、nameはpodの中で一意な値になるように設定が必要
+      image: hello-world

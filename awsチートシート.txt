@@ -1,0 +1,64 @@
+# aws cliをインストール（下記に従ってpkgをインストールする）
+https://docs.aws.amazon.com/ja_jp/cli/latest/userguide/getting-started-install.html
+
+# IAM Userを作成（プログラムから実行、既存ポリシーをアタッチでAdministratorAccessをアタッチする）→ ACCESS KEY IDとSECRET ACCESS KEYを取得
+
+# aws cliにIAMを紐付ける
+aws configure --profile <profile名>
+ACCESS KEY ID：取得した値
+SECRET ACCESS KEY：取得した値
+Default Region：ap-northeast-1
+Default Output format：入力しなくて大丈夫
+
+# aws cliで作成したプロファイルを確認（実行した結果、上で作成したIAMユーザが見えていれば成功！）
+aws iam list-users --profile <profile名>
+
+# eksctlをインストール（Githubにインストールコマンドのってる（https://github.com/weaveworks/eksctl））
+curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+sudo mv /tmp/eksctl /usr/local/bin
+
+# eksctlバージョン
+eksctl version
+
+# eksctlヘルプ
+eksctl -h
+
+# eksctlでは簡単にeksクラスターを作成することができる。（⚠︎⚠︎⚠︎⚠︎⚠︎ -pまたは--profileで明示的にaws cliのprofileを指定しないとdefaultのaws credentialsが使われるので注意）
+# 作成されるクラスターのDefault条件は下記。
+## ・自動生成された名前のクラスター
+## ・m5.largeのEC2インスタンスによって構成された２台のworker nodes
+## ・EC2は公式AWS EKS AMI
+## ・リージョンはus-west-2
+## ・EKS用のVPCが作成される（Quotaに注意）
+eksctl create cluster
+
+# カスタマイズする場合はcluster.yamlを記述
+eksctl create cluster -f cluster.yaml
+
+# お試しで作成した際のコマンドは下記（20~25分くらいかかる）
+eksctl create cluster --name test-cluster --region ap-northeast-1 --profile eks_setup_user
+# もしprofileが分からない場合：less ~/.aws/credentials
+# vpc, サブネット, igw, CloudFormation(AWSのリソースをコードで管理。イベントからどんなリソースを作成したか確認できる), EC2, EKSが自動で作成される。
+
+# kubectlの設定（kubeconfigに新しいクラスターを追加（追加したクラスターは↑で作成したtest-cluster））
+aws eks update-kubeconfig --name test-cluster --profile eks_setup_user
+# 更新したkubeconfigの確認： less ~/.kube/config（次を確認：test-clusterのクラスターが作成。test-clusterのcontextが作成。current_contextがtest-clusterになっていることを確認）
+# ここから先はkubectlでaws上のリソースを操作することができるようになる
+
+# ⚠︎⚠︎⚠︎⚠︎⚠︎ ︎簡単にサービスを公開する流れ（実際にはセキュリティや可用性の設定を行う必要がある）
+# deploymentを作成したりできる
+kubectl create deployment nginx --image=nginx --replicas=3
+# aws上ではローカルでは確認できなかったtypeがLoadBalancerのServiceを立ち上げることができる。
+kubectl create service loadbalancer nginx --tcp=80
+# ロードバランサーはAWSコンソール上のEC2のロードバランサーから立ち上がっていることを確認
+# DNS名（http://a57ac91c64c9c4249aeeeeeec4a73fe2-1952700971.ap-northeast-1.elb.amazonaws.com）からpodに接続することができる
+kubectl delete service nginx（ロードバランサーが削除されていることをAWSコンソール上から確認できる）
+kubectl delete deploy nginx
+
+# クラスターの削除（5~10分くらいかかる）
+eksctl delete cluster --name test-cluster --region ap-northeast-1 --profile eks_setup_user
+
+# IAMユーザーの削除
+1. ~/.aws/credentialsと~/.aws/configからeks_setup_userに関する行を削除
+2. AWSコンソール上のIAMユーザーページからeks_setup_userを削除
+3. ~/.kube/configのcurrent_contextをdocker-desktopに戻しておく

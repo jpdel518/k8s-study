@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug
+  namespace: default
+  labels:
+    env: study
+spec:
+  containers:
+    - name: debug
+      image: centos:7
+      command: # dockerコマンドで言うENTRYPOINT
+        - "sh"
+        - "-c"
+      args: # dockerコマンドで言うCOMMAND
+        - |
+          while true
+          do
+            sleep ${DELAT}
+          done
+      env: # 環境変数を渡すことができる
+        - name: "DELAY"
+          value: "5"
