@@ -19,9 +19,9 @@ spec:
         app: sample-app
     spec:
       containers:
-#      - image: ghcr.io/nakamasato/fastapi-sample:v1.0
       - image: fastapi-sample:v1.0.0
-        imagePullPolicy: Never
+#      - image: fastapi-sample:v1.0.0
+#        imagePullPolicy: Never
         name: fastapi-sample
         envFrom:
           - configMapRef:
