@@ -19,7 +19,7 @@ spec:
         app: sample-app
     spec:
       containers:
-        - image: ghcr.io/jpdel518/fastapi-sample:pr-2
+        - image: ghcr.io/jpdel518/fastapi-sample:pr-3
           #      - image: fastapi-sample:v1.0.0
           #        imagePullPolicy: Never
           name: fastapi-sample
