@@ -19,14 +19,14 @@ spec:
         app: sample-app
     spec:
       containers:
-      - image: fastapi-sample:v1.0.0
-#      - image: fastapi-sample:v1.0.0
-#        imagePullPolicy: Never
-        name: fastapi-sample
-        envFrom:
-          - configMapRef:
-              name: sample-app
-          - secretRef:
-              name: sample-app
-        resources: {}
+        - image: ghcr.io/jpdel518/fastapi-sample:pr-2
+          #      - image: fastapi-sample:v1.0.0
+          #        imagePullPolicy: Never
+          name: fastapi-sample
+          envFrom:
+            - configMapRef:
+                name: sample-app
+            - secretRef:
+                name: sample-app
+          resources: {}
 status: {}
