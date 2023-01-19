@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/jpdel518/k8s-study.git
     targetRevision: main
-    path: argocd/sample-app-manifests
+    path: mysql
   destination:
     server: https://kubernetes.default.svc
     namespace: default
