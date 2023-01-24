@@ -26,6 +26,17 @@ namespaceを削除するとnamespaceに属するリソースも全て削除さ�
 ## volumeMounts（コンテナへマウントするストレージを指定）
 ### name（spec.volumes.nameに一致させる。それによってどのvolumeをどのマウントパスに紐づけるのか指定することができる。）
 ### mountPath（マウントさせるコンテナ内のパスを指定）
+# kubernetesでのヘルスチェック -> podレベルでのヘルスチェック kubectl describe podで再起動やリクエストを受け付け内容になったログを確認することが
+# LiveinessProbe：Podが正常に動作しているかどうかを確認する。Podが正常に動作していない場合は再起動する。
+# ReadinessProbe：Podがリクエストを受け付ける準備ができているかどうか（サービスインする準備ができているかどうか）を確認する。Podが準備ができていない場合はリクエストを受け付けない。
+# liveinessProbe or readinessProbe（両方同時に設定することも可能）
+### httpGet:
+#### path: / （ヘルスチェックするパス）
+#### port: 80 （ヘルスチェックするポート番号）
+### initialDelaySeconds: 5 # 5秒後に最初のヘルスチェックを起動
+### timeoutSeconds: 1  # 1秒以内に応答がなければ、コンテナを再起動する
+### periodSeconds: 10 # ヘルスチェックを行う間隔（10秒）
+### failureThreshold: 3 # ヘルスチェックが失敗した場合にコンテナを再起動するまでの閾値（3回）
 # volumes（大分類はボリューム名、データ保存先の２つ。データ保存先はhostPath,nfs,configMap,secret,emptyDirなどを指定できる。ボリュームとネットワークは同一Pod内で共有されるためコンテナの外に定義される）
 ## name（ボリューム名を指定、containers.volumeMounts.nameに一致させることでマッピングさせる。）
 ## hostPath（ホストサーバ上のパスを指定）
@@ -80,10 +91,20 @@ namespaceを削除するとnamespaceに属するリソースも全て削除さ�
 # paused（ロールアウトを明示的に一時停止させる。基本使わない）
 # progressDeadlineSeconds（更新プログレスの最大秒数。デフォルトは600秒。）
 # template（ReplicaSetと同様）
+# ただしresourcesによりAutoScalingを設定可能。（HPA: Horizontal Pod Autoscaler）
+# containers.resources
+## limits（リソースの上限値を指定。）
+### cpu（CPUの上限値を指定。）
+### memory（メモリの上限値を指定。）
+## requests（リソースの要求値を指定。）
+### cpu（CPUの要求値を指定。）
+### memory（メモリの要求値を指定。）
 # マニフェストファイルを変更して、kubectl applyする事でデプロイしてヒストリーを残すことができる。
 # コマンドからimageを変更する方法： kubectl set image deployment/deployment名 Podテンプレートのコンテナ名=nginx:1.16.0
 # ヒストリーの確認はkubectl rollout history deployment.v1.apps/deployment名（Revisionの番号が大きい方がより新しいReplicaSetを表す）
 # ヒストリーのロールバックはkubectl rollout undo deployment.v1.apps/deployment名 --to-revision=1 （ヒストリーのRevision１に戻すことができる）
+# 既存のdeploymentをAutoscaleさせる（cpu50%でスケール。最低Pod数1、最大Pod数10）： kubectl autoscale deploy <deployment名> --cpu-percent 50 --min 1 --max 10
+# 負荷をかける方法： kubectl run apache-bench -i --tty --rm --image httpd -- /bin/sh -c "while true; do ab -n 10 -c 10 http://nginx.default.svc.cluster.local/ > /dev/null; done;"
 
 # ServiceはPodの集合を抽象化して公開するのが役割。Podの集合に対するDNS名。Podの集合に対する負荷分散。（外部公開、名前解決、L4ロードバランサーの役割）全部で４種類。
 # 背景：各PodはIPアドレスを持っている。理想状態に近づけるためにPodの作成、削除されるが、そのたびにアプリケーションのIPアドレスが変化する → 使う側が大変
@@ -93,7 +114,7 @@ namespaceを削除するとnamespaceに属するリソースも全て削除さ�
 # Serviceが作成されると、ターゲットとなるPodのIPアドレスはエンドポイントという別のリソースに格納されるようになる。（kubectl get endpoints <Service名>）
 # 4種類のService
 ## ClusterIP（クラスタネットワーク内にIPアドレスを公開。名前指定でPodへ到達できるようにする。）
-## NodePort（ClusterIPに加え、Nodeのポートにポートマッピングして受け付けられるようにする。）
+## NodePort（ClusterIPに加え、Nodeのポートにポートマッピングして受け付けられるようにする。Kubernetesで動作している全てのnodeが同じPort番号を受け付けることで、外部からの接続を受け付ける。kubectl get node -o wideで取得したNodeのIP + kube解放したportで接続ができるようになる。接続できない場合はAWSのセキュリティグループ）
 ## LoadBalancer（NodePortに加え、クラウドプロバイダーのロードバランサーを利用してサービスを公開する。）
 ## ExternalName（外部サービスに接続）
 # 主要なspecは４種類
@@ -101,7 +122,7 @@ namespaceを削除するとnamespaceに属するリソースも全て削除さ�
 # clusterIP（clusterIPの時はクラスタネットワーク内のIPアドレスを指定。Noneを指定するとHeadlessServiceになる。HeadlessサービスはStatefulSetで使用。""（空文字）はIPアドレスの自動採番。）
 # ports（受付または転送先のポート番号を指定。）
 ## port（サービスで公開するPort）
-## targetPort（Pod側のPort。コンテナ転送ポート。省略した場合はportで指定したものと同じ番号が使用される）
+## targetPort（Pod側のPort。コンテナ転送ポート。省略した場合はportで指定したものと同じ番号が使用される。）
 ## nodePort（ノード受付ポート。これはtypeがNodePortの場合に使用。外部から接続する際のポート番号になる）
 # selector（転送先のPodを特定するラベルを指定。）
 ## app（転送先のPodを指定）
@@ -131,6 +152,8 @@ namespaceを削除するとnamespaceに属するリソースも全て削除さ�
 ## mountPath（マウント先のパス）
 ## readOnly（読み取り専用かどうか。デフォルトはfalse）
 # コマンドから作成する：kubectl create cm <configmap名> --from-env-file=<filepath> --dry-run=client -o yaml > <作成したいconfigmapリソースファイル名>
+# ファイルから作成する：kubectl create cm <configmap名> --from-file=<filepath> --dry-run=client -o yaml > <作成したいconfigmapリソースファイル名>
+# configmapを更新する： kubectl edit cm <configmap名>　反映させるにはPodの再作成が必要になる： kubectl rollout restart deployment <deployment名>
 
 # SecretはKubernetes上で扱う機微情報（パスワードやトークン）を保存、管理しPodから参照可能にする。base64エンコードされている。
 # specではなく、dataにキーバリューで記述。

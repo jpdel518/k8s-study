@@ -1,12 +1,15 @@
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
-  name: test
+  name: test # project名
   namespace: argocd
 spec:
   description: test project
-  sourceRepos:
+  sourceRepos: # 指定のRepo以外からSyncできないようにすることができる
     - "*"
-  destinations:
-    - namespace: default
+  destinations: # このプロジェクトからデプロイできるclusterとnamespaceを指定。（デプロイするオブジェクトにnamespaceつけるときはここで指定する）
+    - namespace: "*"
       server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'

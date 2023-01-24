@@ -1,18 +1,18 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: sample-app
-  namespace: argocd
+  name: sample-app # application名
+  namespace: argocd # argocd namespaceへDeployする
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: test
-  source:
+  project: test # 所属させたいproject名
+  source: # ApplicationのManifest yamlを管理しているrepo, revision, path
     repoURL: https://github.com/jpdel518/k8s-study.git
     targetRevision: main
-    path: mysql
-  destination:
+    path: mysql-app
+  destination: # deploy先のClusterとNamespace
     server: https://kubernetes.default.svc
-    namespace: default
+    namespace: 'default'
   syncPolicy:
     automated: {}

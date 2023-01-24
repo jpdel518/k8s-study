@@ -55,10 +55,88 @@ kubectl create service loadbalancer nginx --tcp=80
 kubectl delete service nginx（ロードバランサーが削除されていることをAWSコンソール上から確認できる）
 kubectl delete deploy nginx
 
+# AWS Load Balancer Controllerをインストールすることで、AWS上のロードバランサーを作成することができる。
+# https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.4/deploy/installation/
+# cluster.yamlに下記を追記
+# nodeGroups.iam
+## withAddonPolicies
+### awsLoadBalancerController: true
+# cert-managerをインストールすることで、自動でSSL証明書を発行することができる。（前述のURLに詳細記載）
+# AwsLoadBalancerController用のDeployment, Serviceを作成（前述のURLに詳細記載）： kubectl apply -f v2_4_0_full.yaml
+# ingressを作成（eks_ingress.ymlを参照）
+
 # クラスターの削除（5~10分くらいかかる）
 eksctl delete cluster --name test-cluster --region ap-northeast-1 --profile eks_setup_user
+
+# NodeGroupの削除（NodeGroupはworker nodeのこと）コマンドが返ってきてから削除されるまで時間かかるのでkubectl get node で適宜確認する
+eksctl delete nodegroup --cluster test-cluster --region ap-northeast-1 --profile eks_setup_user --name ng-1
+# cluster.yamlに記述したNodeGroupを削除する場合は下記
+eksctl delete nodegroup -f cluster.yaml --approve --profile eks_setup_user
+
+# NodeGroupの作成（cluster.yamlに記述したNodeGroupを作成する場合は下記）
+eksctl create nodegroup -f cluster.yaml --profile eks_setup_user
 
 # IAMユーザーの削除
 1. ~/.aws/credentialsと~/.aws/configからeks_setup_userに関する行を削除
 2. AWSコンソール上のIAMユーザーページからeks_setup_userを削除
 3. ~/.kube/configのcurrent_contextをdocker-desktopに戻しておく
+
+# Cluster Autoscaler
+# kubernetesでnodeのオートスケールを行うためのツール
+# 各種クラウドプロバイダーの仕組みに沿ってオートスケーリングできるように実装されている
+# AWSではAuto Scaling Groupを利用している
+# cluster.yamlに下記を追記
+# nodeGroups.iam
+## withAddonPolicies
+### autoScaler: true
+# Node数の制限は下記を追記
+# nodeGroups
+# minSize: 1 # 最小ノード数
+# maxSize: 3 # 最大ノード数
+# desiredCapacity: 1 # 起動時のノード数
+# Cluster Autoscalerのインストール（https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler/cloudprovider/aws）
+# 右記manifestを参考に修正： https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/aws/examples/cluster-autoscaler-autodiscover.yaml
+# 作成したmanifestをapplyするとcluster auto scaleは適用： kubectl apply -f cluster-autoscaler-autodiscover.yaml
+# 右記のようにpod数を増やすとNodeが増えることを確認できる： kubectl scale deployment nginx --replicas=10
+
+# CloudWatch Container Insights
+# CloudWatch Container Insightsでは、EKS上のアプリケーションのログやメトリクスを収集、集計、可視化することができる
+# CloudWatchの機能で、ダッシュボード上でメトリクスを可視化したり、メトリクスやログに対してアラートを設定、通知したりできる
+# cluster.yamlに下記を追記
+# nodeGroups.iam
+## withAddonPolicies
+### cloudWatch: true
+# CloudWatch Container Insightsのコマンドでのインストール（https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-EKS-quickstart.html）
+# ⚠︎メトリクスの確認
+# AWSコンソール上でCloudWatch > インサイト > Container Insightsを選択
+# 「リソース」が選択されているセレクターを「パフォーマンスのモニタリング」に変更
+# アラートを設定したいPodを選択（フィルター等を使用）
+# アラートを設定したいリソースのメニューボタンを押下し、「メトリクスで表示」を選択
+# アクションの中からベルマークを選択
+# 閾値を設定してアラートの作成をしていく
+# ⚠︎ ログの確認
+# AWSコンソール上でCloudWatch > ログ > ロググループを選択
+# ロググループの中に「/aws/containerinsights/<cluster名>/application」があるので選択
+# ログを確認したいPod名を選択するとログが表示される
+
+# ECRにイメージをpush
+# アカウントIDを取得
+# aws sts get-caller-identity --profile eks_setup_user
+# docker build -t <アカウントID>.dkr.ecr.ap-northeast-1.amazonaws.com/<イメージ名>:<タグ> .
+# ECRへログイン
+# aws ecr get-login-password --region ap-northeast-1 --profile eks_setup_user | docker login --username AWS --password-stdin <アカウントID>.dkr.ecr.ap-northeast-1.amazonaws.com
+# ECRにリポジトリを作成
+# aws ecr create-repository --repository-name <イメージ名> --region ap-northeast-1 --profile eks_setup_user
+# ECRにイメージをpush
+# docker push <アカウントID>.dkr.ecr.ap-northeast-1.amazonaws.com/<イメージ名>:<タグ>
+
+# EKSにアクセス可能なIAMユーザーの追加（対象のKubernetesClusterを作成したユーザー以外のIAMでアクセスできるようにしたい場合）（IAMにAdministratorAccessのポリシーをアタッチしていてもAWSリソースとは別に、Kubernetes側でもユーザーの認証機能があるため作成したIAMではアクセスできない）
+# IAMユーザーを作成しておく
+# aws iam list-users --profile eks_setup_userでアクセスさせたいユーザーのARNを確認
+# eksctl create iamidentitymapping --cluster <cluster名> --arn <ユーザーのARN> --group system:masters --username <ユーザー名> --profile eks_setup_user
+# IAMユーザーの切り替え（プロフィールを作成）
+# aws configure --profile <IAMユーザーのプロファイル名>
+# IAMユーザーの切り替え（./kube/configを丸ごと更新する場合。あんまり良くないやり方）
+# mv ~/.kube/config ~/.kube/config.bak
+# rm -rf ~/.kube/config
+# ~/.kube/configの更新： aws --profile <新しいIAM> eks --region ap-northeast-1 update-kubeconfig --name <cluster名>

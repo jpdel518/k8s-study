@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  namespace: default
+  labels:
+    app: nginx
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.17.2-alpine
+      livenessProbe:
+        httpGet:
+          path: /
+          port: 80
+        initialDelaySeconds: 5 # 5秒後に最初のヘルスチェックを起動
+        timeoutSeconds: 1  # 1秒以内に応答がなければ、コンテナを再起動する
+        periodSeconds: 10 # ヘルスチェックを行う間隔（10秒）
+        failureThreshold: 3 # ヘルスチェックが失敗した場合にコンテナを再起動するまでの閾値（3回）
+      readinessProbe:
+        httpGet:
+          path: /
+          port: 80
+        initialDelaySeconds: 5 # 5秒後に最初のヘルスチェックを起動
+        timeoutSeconds: 1  # 1秒以内に応答がなければ、コンテナを再起動する
+        periodSeconds: 10 # ヘルスチェックを行う間隔（10秒）
+        failureThreshold: 3 # ヘルスチェックが失敗した場合にコンテナを再起動するまでの閾値（3回）
+      ports:
+        - containerPort: 80
+          protocol: TCP
+  restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: default
+spec:
+    selector:
+        app: nginx
+    ports:
+        - protocol: TCP
+          port: 80
+          targetPort: 80
+    type: NodePort
