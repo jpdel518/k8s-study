@@ -6,19 +6,48 @@ kind: ClusterConfig
 metadata:
   name: eks-cluster
   region: ap-northeast-1
-  version: "1.22"
+  version: "1.23"
+
+iam:
+  withOIDC: true
+#  serviceAccounts:
+#    - metadata:
+#        name: ebs-csi-controller
+#        namespace: kube-system
+#      attachPolicyARNs:
+#        - "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+#      roleName: AmazonEKS_EBS_CSI_DriverRole
+#      roleOnly: true
+
+vpc:
+  id: "vpc-04828519889fb1ac1"
+  subnets:
+    private:
+      eks-cluster-private-1a:
+        id: "subnet-0f1d7fef87254be59"
+      eks-cluster-private-1c:
+        id: "subnet-0a6bc001807029844"
+    public:
+      eks-cluster-public-1a:
+        id: "subnet-03bcd114fe0fcbb3d"
+      eks-cluster-public-1c:
+        id: "subnet-0c5f91155ea017485"
 
 nodeGroups:
-  - name: eks-ng
-    instanceType: t3.large
+  - name: eks-ng-1-23
+    instanceType: t2.medium
+    privateNetworking: true
     desiredCapacity: 1
     minSize: 1
-    maxSize: 3
+    maxSize: 5
+    ssh:
+      allow: true
+      publicKeyPath: ~/.ssh/eks_setup.pem.pub
     iam:
       withAddonPolicies:
-        awsLoadBalancerController: true
-        autoScaler: true
-        cloudWatch: true
+#        awsLoadBalancerController: true
+#        autoScaler: true
+#        cloudWatch: true #お金かかる
 
 #cloudWatch:
 #  clusterLogging:
