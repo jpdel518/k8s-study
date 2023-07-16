@@ -5,4 +5,4 @@ nodes:
   - role: worker
     extraMounts:
       - containerPath: /study
-        hostPath: ~/study
+        hostPath: /Users/junpeikurosawa/study/k8s

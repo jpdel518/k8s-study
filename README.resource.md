@@ -48,7 +48,7 @@ spec:
     # kubernetesでのヘルスチェック -> podレベルでのヘルスチェック kubectl describe podで再起動やリクエストを受け付け内容になったログを確認することが
     # LiveinessProbe：Podが正常に動作しているかどうかを確認する。Podが正常に動作していない場合は再起動する。
     # ReadinessProbe：Podがリクエストを受け付ける準備ができているかどうか（サービスインする準備ができているかどうか）を確認する。Podが準備ができていない場合はリクエストを受け付けない。
-    # liveinessProbe or readinessProbe（両方同時に設定することも可能）
+    # livenessProbe or readinessProbe（両方同時に設定することも可能）
     livenessProbe:
       httpGet:
         path: / # ヘルスチェックするパス
@@ -242,6 +242,7 @@ spec:
     env: <転送先のPodを指定>
 ```
 #### clusterIPを指定した場合、serviceからホスト名を指定する方法：<service名>.<serviceのネームスペース>.svc.cluster.local（例：mysql.database.svc.cluster.local cluster.localはそのサービスのクラスター内という指定になる）
+#### 本当に↑の名前解決されているかの確認：kubectl run testpod --image=centos:6 --restart=Never -i --rm -- dig competition-site-service.competition-site.svc.cluster.local
 #### StatefulSetを使用してpod-0 pod-1 pod-2のように同じPodを複数起動した場合、HeadlessServiceを使用することでpod-0.db-svc（Pod名＋HeadlessService名）で名前解決できるようになる
 ***
 

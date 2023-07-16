@@ -34,7 +34,7 @@ aws sts get-caller-identity
 
 
 ## eksctlの設定
-#### 1. eksctlをインストール（Githubにインストールコマンドのってる（https://github.com/weaveworks/eksctl））
+#### 1. eksctlをインストール（Githubにインストールコマンドのってる  https://github.com/weaveworks/eksctl）
 ```shell
 curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
 sudo mv /tmp/eksctl /usr/local/bin
@@ -284,6 +284,7 @@ export AWS_PROFILE=<新しいIAM>
 2. パブリックサブネットに対し、パブリックIPアドレスを自動割り当てにする（Publicサブネットはインターネットに接続できるのでセキュリティ的に少し危険。LoadBalancerなど外からアクセスされる必要があるものだけをおく。）
 3. パブリックサブネットのタグにkubernetes.io/role/elb=1を付与する
 4. プライベートサブネットのタグにkubernetes.io/role/internal-elb=1を付与する（Privateサブネットはインターネットに接続できないのでセキュリティ的に安全。基本的にはこちらにプログラム配置。NatGatewayはインターネットから接続される必要のないインスタンスについて、インターネットからの接続を遮断しつつ、自身はインターネットに接続を出来るようにするため。）
+5. VPCとサブネットのタグにkubernetes.io/cluster/<cluster名>=sharedを付与する
 #### 2. 作成したVPCにeks clusterを作成するにはcluster.yamlに下記を追記
 ```yaml
 vpc:
@@ -406,10 +407,10 @@ kubectl edit -n kube-system configmap/aws-auth
 
 # 以下の記述を追記
 mapUsers: |
-      - userarn: arn:aws:iam::111122223333:user/eks-viewer   # AWS IAM user
-        username: this-aws-iam-user-name-will-have-root-access # K8s User Name（なんでもオッケー。わかりやすい名前つける）
-        groups:
+      - groups:
         - system:masters  # K8s User Group
+        userarn: arn:aws:iam::111122223333:user/eks-viewer   # AWS IAM user
+        username: this-aws-iam-user-name-will-have-root-access # K8s User Name（なんでもオッケー。わかりやすい名前つける）
 ```
 #### 3. 反映を確認
 ```shell
@@ -466,10 +467,10 @@ kubectl edit -n kube-system configmap/aws-auth
 
 # 以下の記述を追記
 mapUsers: |
-      - userarn: arn:aws:iam::111122223333:user/eks-viewer   # AWS IAM user
-        username: this-aws-iam-user-name-will-have-root-access # K8s User Name（なんでもオッケー。わかりやすい名前つける）
-        groups:
+    - groups:
         - system:viewer  # K8s User Group
+        userarn: arn:aws:iam::111122223333:user/eks-viewer   # AWS IAM user
+        username: this-aws-iam-user-name-will-have-root-access # K8s User Name（なんでもオッケー。わかりやすい名前つける）
 ```
 
 #### 8. 反映を確認

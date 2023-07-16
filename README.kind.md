@@ -57,7 +57,13 @@ nodes:
       - containerPort: 30080
         hostPort: 8080
   - role: worker
+    extraMounts:
+    - containerPath: /study
+      hostPath: ~/study
   - role: worker
+    extraMounts:
+    - containerPath: /study
+      hostPath: ~/study
 ```
 
 #### Serviceを作成する際に下記のようにcontainerポートをnodeポート30080に接続すると、localhost:8080/で接続できるようになる
@@ -95,6 +101,31 @@ spec:
   ports:
     - port: 80
       nodePort: 30080
+```
+
+#### minikubeでは無理だったhostPathのマウントも可能
+1. まずCluster.yamlで「ホストマシン（mac）の~/study(hostPath)」を「kindのworker nodeの/study(containerPath)」にマッピング
+1. podから利用する場合は下記pod定義ファイルのように「volumes.hostPathにkindの/studyを指定」、「volumeMounts.mountPathにImageで使用するfilePath」を指定する
+#### Image内のmountPath -> kind node内のmountPath -> ホストマシンのfilePathといった流れでディレクトリをマッピングしている
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sample
+#Podの主要なSpecはcontainersとvolumes
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.17.2-alpine
+      volumeMounts:
+        - name: storage
+          mountPath: /home/nginx
+  volumes:
+    - name: storage
+      hostPath:
+        path: /study
+        type: Directory
+
 ```
 
 #### クラスターの削除
